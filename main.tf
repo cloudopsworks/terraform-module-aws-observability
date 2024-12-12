@@ -45,13 +45,13 @@ resource "aws_prometheus_scraper" "this" {
   for_each = merge([
     for k, v in var.prometheus : {
       for s, conf in v.scrapers : format("%s-%s", k, s) => {
-        prom    = k
-        scraper = try(conf.name, "") != "" ? conf.name : format("%s-%s-scraper", conf.name_prefix, local.system_name)
-        config  = try(conf.config, "")
+        prom          = k
+        scraper_alias = try(conf.name, "") != "" ? conf.name : format("%s-%s-scraper", conf.name_prefix, local.system_name)
+        config        = try(conf.config, "")
       }
     }
   ]...)
-  alias = local.alias_names[each.key].scraper
+  alias = each.value.scraper_alias
   source {
     eks {
       cluster_arn        = try(var.eks.name, "") != "" ? data.aws_eks_cluster.this[0].arn : var.eks.cluster_arn
