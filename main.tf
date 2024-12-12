@@ -46,7 +46,7 @@ resource "aws_prometheus_scraper" "this" {
     for k, v in var.prometheus : {
       for s, conf in v.scrapers : format("%s-%s", k, s) => {
         prom    = k
-        scraper = try(format("%s-%s-scraper", conf.name_prefix, local.system_name), conf.name)
+        scraper = try(conf.name, "") != "" ? conf.name : format("%s-%s-scraper", conf.name_prefix, local.system_name)
         config  = try(conf.config, "")
       }
     }
