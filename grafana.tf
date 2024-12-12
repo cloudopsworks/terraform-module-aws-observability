@@ -48,7 +48,7 @@ resource "aws_grafana_workspace" "this" {
 }
 
 resource "aws_security_group" "grafana" {
-  count       = try(var.grafana.create_security_group, false) ? 1 : 0
+  count       = try(var.vpc.create_security_group, false) ? 1 : 0
   name        = "${local.grafana_name}-grafana-sg"
   description = "Security group for ${local.grafana_name} access to Grafana"
   vpc_id      = try(var.vpc.vpc_id, null)
