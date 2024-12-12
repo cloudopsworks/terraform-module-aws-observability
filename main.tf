@@ -18,7 +18,7 @@ resource "aws_cloudwatch_log_group" "this" {
     for k, v in var.prometheus : k => v
     if try(v.logging.create_log_group, false)
   }
-  name = format("prometheus/%s", local.alias_names[each.key].plain)
+  name = format("/aws/prometheus/%s", local.alias_names[each.key].plain)
   tags = local.all_tags
 }
 
