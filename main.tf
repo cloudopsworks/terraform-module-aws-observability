@@ -9,7 +9,6 @@ locals {
     for k, v in var.prometheus : k => {
       plain     = try(format("%s-%s", v.name_prefix, local.system_name), v.name)
       workspace = try(format("%s-%s-workspace", v.name_prefix, local.system_name), v.name)
-      scraper   = try(format("%s-%s-scraper", v.name_prefix, local.system_name), v.name)
     }
   }
 }
@@ -46,8 +45,9 @@ resource "aws_prometheus_scraper" "this" {
   for_each = merge([
     for k, v in var.prometheus : {
       for s, conf in v.scrapers : format("%s-%s", k, s) => {
-        prom   = k
-        config = try(conf.config, "")
+        prom    = k
+        scraper = try(format("%s-%s-scraper", conf.name_prefix, local.system_name), conf.name)
+        config  = try(conf.config, "")
       }
     }
   ])
@@ -65,4 +65,8 @@ resource "aws_prometheus_scraper" "this" {
     }
   }
   scrape_configuration = each.value.config != "" ? each.value.config : data.aws_prometheus_default_scraper_configuration.sample.configuration
+  tags = merge(local.all_tags,
+    {
+      "eks-cluster-name" = try(var.eks.name, "") != "" ? data.aws_eks_cluster.this[0].name : var.eks.name
+  })
 }
