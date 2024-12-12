@@ -25,7 +25,7 @@ output "prometheus" {
     for k, v in aws_prometheus_workspace.this : k => {
       alias    = v.alias
       arn      = v.arn
-      endpoint = v.endpoint
+      endpoint = v.prometheus_endpoint
       id       = v.id
     }
   }
@@ -37,7 +37,6 @@ output "scrapers" {
       alias    = v.alias
       arn      = v.arn
       role_arn = v.role_arn
-      status   = v.status
     }
   }
 }
