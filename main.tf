@@ -7,8 +7,8 @@
 locals {
   alias_names = {
     for k, v in var.prometheus : k => {
-      plain     = try(format("%s-%s", v.name_prefix, local.system_name), v.name)
-      workspace = try(format("%s-%s-workspace", v.name_prefix, local.system_name), v.name)
+      plain     = try(v.name, format("%s-%s", v.name_prefix, local.system_name))
+      workspace = try(v.name, format("%s-%s-workspace", v.name_prefix, local.system_name))
     }
   }
 }
