@@ -39,11 +39,6 @@ data "aws_eks_cluster" "this" {
   name  = var.eks.name
 }
 
-data "aws_eks_cluster" "this_arn" {
-  count = try(var.eks.name, "") == "" ? 1 : 0
-  arn   = var.eks.cluster_arn
-}
-
 data "aws_prometheus_default_scraper_configuration" "sample" {}
 
 resource "aws_prometheus_scraper" "this" {
@@ -72,6 +67,6 @@ resource "aws_prometheus_scraper" "this" {
   scrape_configuration = each.value.config != "" ? each.value.config : data.aws_prometheus_default_scraper_configuration.sample.configuration
   tags = merge(local.all_tags,
     {
-      "eks-cluster-name" = try(var.eks.name, "") != "" ? data.aws_eks_cluster.this[0].name : data.aws_eks_cluster.this_arn[0].name
+      "eks-cluster-name" = try(var.eks.name, "") != "" ? data.aws_eks_cluster.this[0].name : var.eks.cluster_name
   })
 }
