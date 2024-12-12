@@ -28,7 +28,7 @@ resource "aws_prometheus_workspace" "this" {
   dynamic "logging_configuration" {
     for_each = length(try(each.value.logging, {})) > 0 ? [1] : []
     content {
-      log_group_arn = try(each.value.logging.create_log_group, false) ? aws_cloudwatch_log_group.this[each.key].arn : each.value.logging.log_group_arn + ":*"
+      log_group_arn = (try(each.value.logging.create_log_group, false) ? aws_cloudwatch_log_group.this[each.key].arn : each.value.logging.log_group_arn) + ":*"
     }
   }
   tags = local.all_tags
