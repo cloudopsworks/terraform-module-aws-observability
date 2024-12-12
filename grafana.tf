@@ -4,6 +4,10 @@
 #            Distributed Under Apache v2.0 License
 #
 
+locals {
+  grafana_name = try(var.grafana.name, "") != "" ? var.grafana.name : format("%s-%s-grafana", var.grafana.name_prefix, local.system_name)
+}
+
 data "aws_iam_policy_document" "grafana_assume_role" {
   statement {
     actions = [
@@ -23,7 +27,7 @@ resource "aws_iam_role" "grafana" {
 }
 
 resource "aws_grafana_workspace" "this" {
-  name                      = try(var.grafana.name, "") != "" ? var.grafana.name : format("%s-%s-grafana", var.grafana.name_prefix, local.system_name)
+  name                      = local.grafana_name
   account_access_type       = try(var.grafana.account_access_type, "CURRENT_ACCOUNT")
   authentication_providers  = try(var.grafana.authentication_providers, [])
   permission_type           = try(var.grafana.permission_type, "SERVICE_MANAGED")
@@ -36,9 +40,22 @@ resource "aws_grafana_workspace" "this" {
   dynamic "vpc_configuration" {
     for_each = length(try(var.vpc, {})) > 0 ? [1] : []
     content {
-      security_group_ids = try(var.vpc.security_group_ids, null)
+      security_group_ids = concat(try(var.vpc.security_group_ids, []), try(var.vpc.create_security_group, false) ? [aws_security_group.grafana[0].id] : [])
       subnet_ids         = try(var.vpc.subnet_ids, null)
     }
   }
   tags = local.all_tags
+}
+
+resource "aws_security_group" "grafana" {
+  count       = try(var.grafana.create_security_group, false) ? 1 : 0
+  name        = "${local.grafana_name}-grafana-sg"
+  description = "Security group for ${local.grafana_name} access to Grafana"
+  vpc_id      = try(var.vpc.vpc_id, null)
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
