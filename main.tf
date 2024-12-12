@@ -67,6 +67,6 @@ resource "aws_prometheus_scraper" "this" {
   scrape_configuration = each.value.config != "" ? each.value.config : data.aws_prometheus_default_scraper_configuration.sample.configuration
   tags = merge(local.all_tags,
     {
-      "eks-cluster-name" = try(var.eks.name, "") != "" ? data.aws_eks_cluster.this[0].name : var.eks.name
+      "eks-cluster-name" = try(var.eks.name, "") != "" ? var.eks.name : data.aws_eks_cluster.this[0].name
   })
 }
