@@ -9,6 +9,7 @@ locals {
 }
 
 data "aws_iam_policy_document" "grafana_assume_role" {
+  count = try(var.grafana.create, false) ? 1 : 0
   statement {
     actions = [
       "sts:AssumeRole"
@@ -22,21 +23,25 @@ data "aws_iam_policy_document" "grafana_assume_role" {
 }
 
 resource "aws_iam_role" "grafana" {
+  count              = try(var.grafana.create, false) ? 1 : 0
   name               = "grafana-${local.system_name}-role"
-  assume_role_policy = data.aws_iam_policy_document.grafana_assume_role.json
+  assume_role_policy = data.aws_iam_policy_document.grafana_assume_role[0].json
 }
 
 resource "aws_grafana_workspace" "this" {
+  count                     = try(var.grafana.create, false) ? 1 : 0
   name                      = local.grafana_name
   account_access_type       = try(var.grafana.account_access_type, "CURRENT_ACCOUNT")
   authentication_providers  = try(var.grafana.authentication_providers, [])
   permission_type           = try(var.grafana.permission_type, "SERVICE_MANAGED")
-  role_arn                  = aws_iam_role.grafana.arn
+  role_arn                  = aws_iam_role.grafana[0].arn
   configuration             = length(try(var.grafana.configuration, {})) > 0 ? jsonencode(var.grafana.configuration) : null
   data_sources              = try(var.grafana.data_sources, null)
   notification_destinations = try(var.grafana.notification_destinations, null)
   organization_role_name    = try(var.grafana.organization_role_name, null)
   organizational_units      = try(var.grafana.organizational_units, null)
+  grafana_version           = try(var.grafana.grafana_version, null)
+  description               = try(var.grafana.description, "Grafana workspace for ${local.grafana_name}")
   dynamic "vpc_configuration" {
     for_each = length(try(var.vpc, {})) > 0 ? [1] : []
     content {
