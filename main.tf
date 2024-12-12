@@ -50,7 +50,7 @@ resource "aws_prometheus_scraper" "this" {
         config  = try(conf.config, "")
       }
     }
-  ])
+  ]...)
   alias = local.alias_names[each.key].scraper
   source {
     eks {
