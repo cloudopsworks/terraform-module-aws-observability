@@ -21,3 +21,9 @@ variable "eks" {
   type        = any
   default     = {}
 }
+
+variable "vpc" {
+  description = "VPC configurations"
+  type        = any
+  default     = {}
+}
