@@ -72,7 +72,7 @@ data "aws_ssoadmin_instances" "sso" {
 data "aws_identitystore_group" "group" {
   for_each = toset(flatten([
     for role in try(var.grafana.aws_sso, []) : [
-      for group in role.groups : group
+      for group in try(role.groups, []) : group
     ] if try(var.grafana.create, false)
   ]))
   identity_store_id = tolist(data.aws_ssoadmin_instances.sso[0].identity_store_ids)[0]
@@ -87,7 +87,7 @@ data "aws_identitystore_group" "group" {
 data "aws_identitystore_user" "user" {
   for_each = toset(flatten([
     for role in try(var.grafana.aws_sso, []) : [
-      for user in role.users : user
+      for user in try(role.users, []) : user
     ] if try(var.grafana.create, false)
   ]))
   identity_store_id = tolist(data.aws_ssoadmin_instances.sso[0].identity_store_ids)[0]
