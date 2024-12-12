@@ -107,9 +107,9 @@ resource "aws_grafana_role_association" "role" {
   role         = each.value.role
   workspace_id = aws_grafana_workspace.this[0].id
   group_ids = [
-    for group in each.value.groups : data.aws_identitystore_group.group[group].id
+    for group in try(each.value.groups, []) : data.aws_identitystore_group.group[group].id
   ]
   user_ids = [
-    for user in each.value.users : data.aws_identitystore_user.user[user].id
+    for user in try(each.value.users, []) : data.aws_identitystore_user.user[user].id
   ]
 }
