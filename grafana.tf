@@ -64,3 +64,14 @@ resource "aws_security_group" "grafana" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
+
+resource "aws_grafana_role_association" "role" {
+  for_each = {
+    for role in try(var.grafana.aws_sso, []) : role.role => role
+    if try(var.grafana.create, false)
+  }
+  role         = each.value.role
+  workspace_id = aws_grafana_workspace.this[0].id
+  group_ids    = try(each.value.groups, [])
+  user_ids     = try(each.value.users, [])
+}
