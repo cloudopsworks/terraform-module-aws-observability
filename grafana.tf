@@ -65,6 +65,40 @@ resource "aws_security_group" "grafana" {
   }
 }
 
+data "aws_ssoadmin_instances" "sso" {
+  count = try(var.grafana.create, []) != [] ? 1 : 0
+}
+
+data "aws_identitystore_group" "group" {
+  for_each = toset(flatten([
+    for role in try(var.grafana.aws_sso, []) : [
+      for group in role.groups : group
+    ] if try(var.grafana.create, false)
+  ]))
+  identity_store_id = tolist(data.aws_ssoadmin_instances.sso[0].identity_store_ids)[0]
+  alternate_identifier {
+    unique_attribute {
+      attribute_path  = "DisplayName"
+      attribute_value = each.value
+    }
+  }
+}
+
+data "aws_identitystore_user" "user" {
+  for_each = toset(flatten([
+    for role in try(var.grafana.aws_sso, []) : [
+      for user in role.users : user
+    ] if try(var.grafana.create, false)
+  ]))
+  identity_store_id = tolist(data.aws_ssoadmin_instances.sso[0].identity_store_ids)[0]
+  alternate_identifier {
+    unique_attribute {
+      attribute_path  = "UserName"
+      attribute_value = each.value
+    }
+  }
+}
+
 resource "aws_grafana_role_association" "role" {
   for_each = {
     for role in try(var.grafana.aws_sso, []) : role.role => role
@@ -72,6 +106,10 @@ resource "aws_grafana_role_association" "role" {
   }
   role         = each.value.role
   workspace_id = aws_grafana_workspace.this[0].id
-  group_ids    = try(each.value.groups, [])
-  user_ids     = try(each.value.users, [])
+  group_ids = [
+    for group in each.value.groups : data.aws_identitystore_group.group[group].id
+  ]
+  user_ids = [
+    for user in each.value.users : data.aws_identitystore_user.user[user].id
+  ]
 }
