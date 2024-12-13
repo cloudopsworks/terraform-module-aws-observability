@@ -36,6 +36,18 @@ resource "aws_iam_role" "grafana" {
   )
 }
 
+resource "aws_iam_role_policy_attachment" "grafana_cloudwatch" {
+  count      = try(var.grafana.create, false) ? 1 : 0
+  policy_arn = "arn:aws:iam::aws:policy/AmazonGrafanaCloudWatchAccess"
+  role       = aws_iam_role.grafana[0].name
+}
+
+resource "aws_iam_role_policy_attachment" "grafana_xray" {
+  count      = try(var.grafana.create, false) ? 1 : 0
+  policy_arn = "arn:aws:iam::aws:policy/AWSXrayReadOnlyAccess"
+  role       = aws_iam_role.grafana[0].name
+}
+
 data "aws_iam_policy_document" "grafana" {
   count = try(var.grafana.create, false) ? 1 : 0
   statement {
@@ -43,17 +55,21 @@ data "aws_iam_policy_document" "grafana" {
     effect = "Allow"
     actions = [
       "aps:ListWorkspaces",
+      "aps:DescribeWorkspace",
+      "aps:QueryMetrics",
+      "aps:GetLabels",
+      "aps:GetSeries",
+      "aps:GetMetricMetadata"
     ]
     resources = ["*"]
   }
   statement {
-    sid    = "AllowAPSs"
+    sid    = "SNSPublish"
     effect = "Allow"
     actions = [
-      "aps:DescribeWorkspace",
-      "aps:Get*",
+      "sns:Publish"
     ]
-    resources = ["arn:aws:aps:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:workspace/*"]
+    resources = ["arn:aws:sns:*:${data.aws_caller_identity.current.account_id}:grafana*"]
   }
 }
 
