@@ -42,10 +42,17 @@ data "aws_iam_policy_document" "grafana" {
     sid    = "AllowAPS"
     effect = "Allow"
     actions = [
-      "aps:DescribeWorkspace",
       "aps:ListWorkspaces",
     ]
     resources = ["arn:aws:aps:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:/workspaces"]
+  }
+  statement {
+    sid    = "AllowAPSs"
+    effect = "Allow"
+    actions = [
+      "aps:DescribeWorkspace",
+    ]
+    resources = ["arn:aws:aps:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:/workspaces/*"]
   }
 }
 
