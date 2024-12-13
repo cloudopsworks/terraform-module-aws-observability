@@ -75,6 +75,7 @@ data "aws_iam_policy_document" "grafana" {
 
 resource "aws_iam_role_policy" "grafana" {
   count  = try(var.grafana.create, false) ? 1 : 0
+  name   = "grafana-${local.system_name}-policy"
   role   = aws_iam_role.grafana[0].name
   policy = data.aws_iam_policy_document.grafana[0].json
 }
