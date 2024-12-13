@@ -52,7 +52,7 @@ data "aws_iam_policy_document" "grafana" {
     actions = [
       "aps:DescribeWorkspace",
     ]
-    resources = ["arn:aws:aps:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:/workspaces/*"]
+    resources = ["arn:aws:aps:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:/workspace/*"]
   }
 }
 
