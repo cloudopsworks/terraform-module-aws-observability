@@ -22,10 +22,37 @@ data "aws_iam_policy_document" "grafana_assume_role" {
   }
 }
 
+
 resource "aws_iam_role" "grafana" {
   count              = try(var.grafana.create, false) ? 1 : 0
   name               = "grafana-${local.system_name}-role"
+  description        = "IAM Role for Grafana workspace ${local.grafana_name}"
   assume_role_policy = data.aws_iam_policy_document.grafana_assume_role[0].json
+  tags = merge(
+    local.all_tags,
+    {
+      Name = "grafana-${local.system_name}-role"
+    }
+  )
+}
+
+data "aws_iam_policy_document" "grafana" {
+  count = try(var.grafana.create, false) ? 1 : 0
+  statement {
+    sid    = "AllowAPS"
+    effect = "Allow"
+    actions = [
+      "aps:DescribeWorkspace",
+      "aps:ListWorkspaces",
+    ]
+    resources = ["arn:aws:aps:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:/workspaces"]
+  }
+}
+
+resource "aws_iam_role_policy" "grafana" {
+  count  = try(var.grafana.create, false) ? 1 : 0
+  role   = aws_iam_role.grafana[0].name
+  policy = data.aws_iam_policy_document.grafana[0].json
 }
 
 resource "aws_grafana_workspace" "this" {
