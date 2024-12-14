@@ -27,3 +27,9 @@ variable "vpc" {
   type        = any
   default     = {}
 }
+
+variable "kms" {
+  description = "KMS Key configurations"
+  type        = any
+  default     = {}
+}

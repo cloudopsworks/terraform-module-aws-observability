@@ -5,7 +5,7 @@
 #
 
 module "kms" {
-  count      = try(var.prometheus.kms.create, false) ? 1 : 0
+  count      = try(var.kms.create, false) ? 1 : 0
   source     = "github.com/cloudopsworks/terraform-module-aws-kms.git?ref=v1.0.0"
   is_hub     = var.is_hub
   org        = var.org
