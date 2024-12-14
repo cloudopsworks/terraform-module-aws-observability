@@ -15,5 +15,6 @@ module "kms" {
   config = {
     deletion_window_in_days = 30
     description             = "KMS key for AWS Prometheus Workspaces in ${var.org.organization_name} - ${var.org.environment_name}"
+    enable_key_rotation     = try(var.kms.enable_key_rotation, false)
   }
 }
