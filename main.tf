@@ -18,8 +18,11 @@ resource "aws_cloudwatch_log_group" "this" {
     for k, v in var.prometheus : k => v
     if try(v.logging.create_log_group, false)
   }
-  name = format("/aws/prometheus/%s", local.alias_names[each.key].plain)
-  tags = local.all_tags
+  name              = format("/aws/prometheus/%s", local.alias_names[each.key].plain)
+  retention_in_days = try(each.value.logging.retention_in_days, 7)
+  log_group_class   = try(each.value.logging.log_group_class, "STANDARD")
+  kms_key_id        = try(var.prometheus.kms.create, false) ? module.kms.kms_key_id : null
+  tags              = local.all_tags
 }
 
 resource "aws_prometheus_workspace" "this" {
@@ -31,7 +34,8 @@ resource "aws_prometheus_workspace" "this" {
       log_group_arn = "${try(each.value.logging.create_log_group, false) ? aws_cloudwatch_log_group.this[each.key].arn : each.value.logging.log_group_arn}:*"
     }
   }
-  tags = local.all_tags
+  kms_key_arn = try(var.prometheus.kms.create, false) ? module.kms.kms_key_arn : null
+  tags        = local.all_tags
 }
 
 data "aws_eks_cluster" "this" {
