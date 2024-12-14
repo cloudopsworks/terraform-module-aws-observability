@@ -19,7 +19,8 @@ module "kms" {
     rotation_period_in_days = try(var.kms.rotation_period_in_days, 90)
     statements = [
       {
-        sid = "CloudWatchLogs"
+        sid    = "CloudWatchLogs"
+        effect = "Allow"
         actions = [
           "kms:Encrypt*",
           "kms:Decrypt*",
@@ -43,6 +44,35 @@ module "kms" {
             values = [
               "arn:aws:logs:${local.region}:${data.aws_caller_identity.current.account_id}:log-group:*",
             ]
+          }
+        ]
+      },
+      {
+        sid    = "AWSPrometheus"
+        effect = "Allow"
+        actions = [
+          "kms:DescribeKey",
+          "kms:CreateGrant",
+          "kms:GenerateDataKey",
+          "kms:Decrypt"
+        ]
+        principals = [
+          {
+            type        = "AWS"
+            identifiers = ["*"]
+          }
+        ]
+        resources = ["*"]
+        conditions = [
+          {
+            test     = "StringEquals"
+            variable = "kms:ViaService"
+            values   = ["aps.${data.aws_region.current.name}.amazonaws.com"]
+          },
+          {
+            test     = "StringEquals"
+            variable = "kms:CallerAccount"
+            values   = [data.aws_caller_identity.current.account_id]
           }
         ]
       }
