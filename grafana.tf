@@ -38,7 +38,7 @@ resource "aws_iam_role" "grafana" {
 
 resource "aws_iam_role_policy_attachment" "grafana_cloudwatch" {
   count      = try(var.grafana.create, false) ? 1 : 0
-  policy_arn = "arn:aws:iam::aws:policy/AmazonGrafanaCloudWatchAccess"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonGrafanaCloudWatchAccess"
   role       = aws_iam_role.grafana[0].name
 }
 
