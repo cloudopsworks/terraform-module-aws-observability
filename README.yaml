@@ -1,30 +1,339 @@
-name: Terraform Transit Gateway Module
+name: Terraform AWS Grafana Prometheus Module
 #logo: logo/logo.jpg
+badges:
+  - name: Latest Release
+    image: https://img.shields.io/github/release/cloudopsworks/terraform-module-aws-grafana-prometheus.svg?style=for-the-badge
+    url: https://github.com/cloudopsworks/terraform-module-aws-grafana-prometheus/releases/latest
+  - name: Last Updated
+    image: https://img.shields.io/github/last-commit/cloudopsworks/terraform-module-aws-grafana-prometheus.svg?style=for-the-badge
+    url: https://github.com/cloudopsworks/terraform-module-aws-grafana-prometheus/commits
 
 license: "APACHE2"
 
 copyrights:
   - name: "Cloud Ops Works LLC"
-    url: "https://cloudops.works"
+    url: "https://cloudopsworks.co"
     year: "2024"
 
-github_repo: cloudopsworks/terraform-module-aws-vpc-setup
+github_repo: cloudopsworks/terraform-module-aws-grafana-prometheus
 
 description: |-
-  VPC Module for setting up transit gateway with ResourceAccessMananger support.
+  Terraform module for provisioning a complete AWS observability stack using Amazon Managed Prometheus (AMP)
+  and Amazon Managed Grafana. Supports multi-workspace Prometheus deployments, automatic EKS metrics scraping,
+  CloudWatch log integration, KMS encryption at rest, VPC isolation for Grafana, and AWS SSO role-based
+  access control.
 
 # Introduction to the project
-#introduction: |-
-#  This is an introduction.
+introduction: |-
+  ## Overview
+
+  This module deploys a production-ready observability infrastructure on AWS, combining:
+
+  - **Amazon Managed Prometheus (AMP)**: Fully managed, Prometheus-compatible monitoring service.
+    The module supports multiple named workspaces, each with optional CloudWatch log forwarding
+    and configurable metric scrapers targeting EKS clusters.
+
+  - **Amazon Managed Grafana**: Managed Grafana workspace for visualization and alerting,
+    with pre-configured IAM permissions for Amazon Prometheus, CloudWatch, and X-Ray data sources.
+    Supports AWS SSO integration for enterprise access control.
+
+  - **KMS Encryption**: Optional customer-managed KMS key for encrypting Prometheus workspaces
+    and CloudWatch log groups, with least-privilege key policies scoped to the AMP service and
+    CloudWatch Logs service endpoints.
+
+  - **VPC Integration**: Optional VPC configuration for Grafana to ensure network-level isolation,
+    including automatic security group creation.
+
+  ## Key Features
+
+  - Multiple Prometheus workspaces with independent scraper configurations
+  - Automatic EKS cluster discovery by name (or manual ARN-based configuration)
+  - Custom or default Prometheus scrape configurations per scraper
+  - AWS SSO group and user role assignments for Grafana (ADMIN, EDITOR, VIEWER)
+  - Consistent resource naming using organizational unit, environment, and spoke identifiers
+  - Standardized tagging via the CloudOpsWorks tags module
 
 # How to use this project
-#usage: |-
+usage: |-
+  ## Full Configuration Example
+
+  The following Terragrunt HCL configuration demonstrates all available options for this module.
+
+  ```hcl
+  terraform {
+    source = "github.com/cloudopsworks/terraform-module-aws-grafana-prometheus.git//?ref=v1.0.0"
+  }
+
+  include "root" {
+    path = find_in_parent_folders()
+  }
+
+  inputs = {
+    is_hub    = false   # (Optional) Set true for hub configuration in hub/spoke topology. Default: false.
+    spoke_def = "001"   # (Optional) Spoke identifier used in resource naming. Default: "001".
+
+    org = {
+      organization_name = "MyCompany"   # (Required) Full organization name.
+      organization_unit = "platform"    # (Required) Organizational unit short name (used in resource names).
+      environment_type  = "prod"        # (Required) Environment type (e.g., prod, staging, dev).
+      environment_name  = "production"  # (Required) Environment name (e.g., production, staging).
+    }
+
+    extra_tags = {
+      Project = "observability"         # (Optional) Additional tags to merge with auto-generated tags.
+    }
+
+    kms = {
+      create                  = true   # (Optional) Create a KMS key for encryption at rest. Default: false.
+      enable_key_rotation     = true   # (Optional) Enable automatic KMS key rotation. Default: false.
+      rotation_period_in_days = 90     # (Optional) Key rotation period in days (90-2560). Default: 90.
+    }
+
+    prometheus = {
+      main = {
+        name_prefix = "platform"       # (Optional) Prefix for auto-generated workspace alias. Required if name not set.
+        # name: "my-workspace"         # (Optional) Full workspace alias. Overrides name_prefix.
+        logging = {
+          create_log_group  = true     # (Optional) Create a CloudWatch Log Group for this workspace. Default: false.
+          retention_in_days = 30       # (Optional) Log retention in days. Default: 7.
+          log_group_class   = "STANDARD"  # (Optional) Log group class. Values: STANDARD, INFREQUENT_ACCESS. Default: "STANDARD".
+          # log_group_arn: "arn:..."   # (Optional) Existing log group ARN. Used when create_log_group is false.
+        }
+        scrapers = {
+          eks-main = {
+            name_prefix = "platform"   # (Optional) Prefix for auto-generated scraper alias. Required if name not set.
+            # name: "my-scraper"       # (Optional) Full scraper alias. Overrides name_prefix.
+            # config: "..."            # (Optional) Custom Prometheus scrape config YAML. Uses AWS default if omitted.
+          }
+        }
+      }
+    }
+
+    eks = {
+      name = "my-eks-cluster"         # (Optional) EKS cluster name for auto-discovery of ARN, subnets, and security groups.
+      # cluster_arn: "arn:aws:..."    # (Optional) EKS cluster ARN. Required if name is not provided.
+      # cluster_name: "my-cluster"    # (Optional) Cluster name for tagging. Required if name is not provided.
+      # subnet_ids: ["subnet-..."]    # (Optional) VPC subnet IDs. Required if name is not provided.
+      # security_group_ids: ["sg-..."]  # (Optional) Security group IDs. Required if name is not provided.
+    }
+
+    grafana = {
+      create                    = true              # (Required) Whether to create the Grafana workspace. Default: false.
+      name_prefix               = "platform"        # (Optional) Prefix for auto-generated workspace name. Required if name not set.
+      # name: "my-grafana"                          # (Optional) Full workspace name. Overrides name_prefix.
+      account_access_type       = "CURRENT_ACCOUNT" # (Optional) Values: CURRENT_ACCOUNT, ORGANIZATION. Default: "CURRENT_ACCOUNT".
+      authentication_providers  = ["AWS_SSO"]       # (Optional) Values: AWS_SSO, SAML.
+      permission_type           = "SERVICE_MANAGED" # (Optional) Values: SERVICE_MANAGED, CUSTOMER_MANAGED. Default: "SERVICE_MANAGED".
+      data_sources              = ["PROMETHEUS", "CLOUDWATCH", "XRAY"]  # (Optional) Values: PROMETHEUS, CLOUDWATCH, XRAY, TIMESTREAM, SITEWISE, ATHENA, REDSHIFT.
+      notification_destinations = ["SNS"]           # (Optional) Values: SNS.
+      grafana_version           = "10.4"            # (Optional) Grafana version. Uses AWS-managed default if omitted.
+      description               = "Platform observability workspace"  # (Optional) Workspace description.
+      # configuration: {}                           # (Optional) Grafana workspace configuration object (JSON-encoded).
+      # organization_role_name: "..."               # (Optional) AWS Organizations role name for cross-account access.
+      # organizational_units: ["ou-..."]            # (Optional) List of OU IDs to grant workspace access.
+      aws_sso = [
+        {
+          role   = "ADMIN"                          # (Required) Grafana role. Values: ADMIN, EDITOR, VIEWER.
+          groups = ["DevOps-Admins"]                # (Optional) List of AWS SSO group display names.
+        },
+        {
+          role   = "EDITOR"
+          groups = ["DevOps-Engineers"]
+        },
+        {
+          role  = "VIEWER"
+          users = ["readonly@example.com"]          # (Optional) List of AWS SSO usernames.
+        }
+      ]
+    }
+
+    vpc = {
+      vpc_id                = "vpc-0abc123def456"              # (Optional) VPC ID. Required when create_security_group is true.
+      subnet_ids            = ["subnet-0abc123", "subnet-0def456"]  # (Optional) Subnet IDs for Grafana VPC configuration.
+      security_group_ids    = []                               # (Optional) Existing security group IDs to attach to Grafana.
+      create_security_group = true                             # (Optional) Create a dedicated security group for Grafana. Default: false.
+    }
+  }
+  ```
 
 # Example usage
-#examples: |-
+examples: |-
+  ## Example: Prometheus-Only Deployment with EKS Scraping
+
+  Minimal configuration to deploy a single Prometheus workspace and scrape metrics from an existing EKS cluster:
+
+  ```hcl
+  terraform {
+    source = "github.com/cloudopsworks/terraform-module-aws-grafana-prometheus.git//?ref=v1.0.0"
+  }
+
+  include "root" {
+    path = find_in_parent_folders()
+  }
+
+  inputs = {
+    org = {
+      organization_name = "Acme Corp"
+      organization_unit = "platform"
+      environment_type  = "prod"
+      environment_name  = "production"
+    }
+
+    prometheus = {
+      main = {
+        name_prefix = "acme"
+        logging = {
+          create_log_group  = true
+          retention_in_days = 14
+        }
+        scrapers = {
+          primary = {
+            name_prefix = "acme"
+          }
+        }
+      }
+    }
+
+    eks = {
+      name = "acme-prod-cluster"
+    }
+  }
+  ```
+
+  ## Example: Full Stack with Grafana, SSO, KMS, and VPC
+
+  Production-grade deployment with encryption, network isolation, and SSO-based access:
+
+  ```hcl
+  terraform {
+    source = "github.com/cloudopsworks/terraform-module-aws-grafana-prometheus.git//?ref=v1.0.0"
+  }
+
+  include "root" {
+    path = find_in_parent_folders()
+  }
+
+  inputs = {
+    org = {
+      organization_name = "Acme Corp"
+      organization_unit = "platform"
+      environment_type  = "prod"
+      environment_name  = "production"
+    }
+
+    kms = {
+      create              = true
+      enable_key_rotation = true
+    }
+
+    prometheus = {
+      main = {
+        name_prefix = "acme"
+        logging = {
+          create_log_group  = true
+          retention_in_days = 30
+        }
+        scrapers = {
+          primary = {
+            name_prefix = "acme"
+          }
+        }
+      }
+    }
+
+    eks = {
+      name = "acme-prod-cluster"
+    }
+
+    grafana = {
+      create                   = true
+      name_prefix              = "acme"
+      account_access_type      = "CURRENT_ACCOUNT"
+      authentication_providers = ["AWS_SSO"]
+      permission_type          = "SERVICE_MANAGED"
+      data_sources             = ["PROMETHEUS", "CLOUDWATCH", "XRAY"]
+      notification_destinations = ["SNS"]
+      aws_sso = [
+        {
+          role   = "ADMIN"
+          groups = ["Platform-Admins"]
+        },
+        {
+          role   = "EDITOR"
+          groups = ["Platform-Engineers"]
+        }
+      ]
+    }
+
+    vpc = {
+      vpc_id                = "vpc-0abc1234"
+      subnet_ids            = ["subnet-0aaa", "subnet-0bbb"]
+      create_security_group = true
+    }
+  }
+  ```
 
 # How to get started quickly
-#quickstart: |-
+quickstart: |-
+  ## Quick Start
+
+  **Prerequisites:**
+  - AWS account with permissions to create AMP workspaces, IAM roles, and CloudWatch log groups
+  - An existing EKS cluster
+  - Terragrunt installed
+
+  **Minimal setup (Prometheus scraping only):**
+
+  1. Create a `terragrunt.hcl` file:
+
+  ```hcl
+  terraform {
+    source = "github.com/cloudopsworks/terraform-module-aws-grafana-prometheus.git//?ref=v1.0.0"
+  }
+
+  include "root" {
+    path = find_in_parent_folders()
+  }
+
+  inputs = {
+    org = {
+      organization_name = "MyCompany"
+      organization_unit = "ops"
+      environment_type  = "dev"
+      environment_name  = "development"
+    }
+
+    prometheus = {
+      default = {
+        name_prefix = "myapp"
+        scrapers = {
+          eks = {
+            name_prefix = "myapp"
+          }
+        }
+      }
+    }
+
+    eks = {
+      name = "my-eks-cluster"
+    }
+  }
+  ```
+
+  2. Initialize and apply:
+
+  ```sh
+  terragrunt init
+  terragrunt apply
+  ```
+
+  3. Retrieve the Prometheus endpoint from outputs:
+
+  ```sh
+  terragrunt output prometheus
+  ```
+
+  **To add Grafana**, set `grafana.create = true` and configure `authentication_providers` with at least one provider (e.g., `["AWS_SSO"]`).
 
 include:
   - "docs/targets.md"
